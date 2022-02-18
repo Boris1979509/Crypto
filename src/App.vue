@@ -157,9 +157,8 @@ export default {
       this.ticker = '';
     },
     handleDelete(tickerToRemove) {
-      this.tickers = this.tickers.filter(t => t !== tickerToRemove);
-    }
+      this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
+    },
   },
 };
 </script>
-<style lang="css" src="./app.css"></style>
