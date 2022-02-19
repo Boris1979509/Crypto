@@ -78,7 +78,7 @@
           <div
             v-for="t in tickers"
             :key="t.name"
-            @click="sel = t"
+            @click="select(t)"
             class="
               bg-white
               overflow-hidden
@@ -87,6 +87,7 @@
               border-purple-800 border-solid
               cursor-pointer
             "
+            :class="{ 'border-4 border-red-500': sel === t }"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
               <dt class="text-sm font-medium text-gray-500 truncate">
@@ -113,7 +114,7 @@
                 transition-all
                 focus:outline-none
               "
-              @click="handleDelete(t)"
+              @click.stop="handleDelete(t)"
             >
               <svg
                 class="h-5 w-5"
@@ -133,6 +134,46 @@
         </dl>
         <hr class="w-full border-t border-gray-600 my-4" />
       </template>
+      <section v-if="sel" class="relative">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
+          {{ sel.name }} - USD
+        </h3>
+        <div class="flex items-end border-gray-600 border-b border-l h-64">
+          <div
+            v-for="(bar, idx) in normalizeGraph()"
+            :key="idx"
+            :style="{ height: `${bar}%` }"
+            class="bg-purple-800 border w-10"
+          ></div>
+        </div>
+        <button
+          @click="sel = null"
+          type="button"
+          class="absolute top-0 right-0"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            xmlns:svgjs="http://svgjs.com/svgjs"
+            version="1.1"
+            width="30"
+            height="30"
+            x="0"
+            y="0"
+            viewBox="0 0 511.76 511.76"
+            style="enable-background: new 0 0 512 512"
+            xml:space="preserve"
+          >
+            <g>
+              <path
+                d="M436.896,74.869c-99.84-99.819-262.208-99.819-362.048,0c-99.797,99.819-99.797,262.229,0,362.048    c49.92,49.899,115.477,74.837,181.035,74.837s131.093-24.939,181.013-74.837C536.715,337.099,536.715,174.688,436.896,74.869z     M361.461,331.317c8.341,8.341,8.341,21.824,0,30.165c-4.16,4.16-9.621,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    l-75.413-75.435l-75.392,75.413c-4.181,4.16-9.643,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    c-8.341-8.341-8.341-21.845,0-30.165l75.392-75.413l-75.413-75.413c-8.341-8.341-8.341-21.845,0-30.165    c8.32-8.341,21.824-8.341,30.165,0l75.413,75.413l75.413-75.413c8.341-8.341,21.824-8.341,30.165,0    c8.341,8.32,8.341,21.824,0,30.165l-75.413,75.413L361.461,331.317z"
+                fill="#718096"
+                data-original="#000000"
+              ></path>
+            </g>
+          </svg>
+        </button>
+      </section>
     </div>
   </div>
 </template>
@@ -143,21 +184,41 @@ export default {
   data() {
     return {
       ticker: '',
-      tickers: [
-        { name: 'DEMO', price: '-' },
-        { name: 'DEMO', price: '-' },
-        { name: 'DEMO', price: '-' },
-      ],
+      tickers: [],
+      sel: null,
+      graph: [],
     };
   },
   methods: {
+    select(ticker) {
+      this.sel = ticker;
+      this.graph = [];
+    },
     add() {
-      const t = { name: this.ticker, price: '-' };
-      this.tickers.push(t);
+      const currentTicker = { name: this.ticker, price: '-' };
+      this.tickers.push(currentTicker);
+      setInterval(async () => {
+        const resp = await fetch(
+          `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=16045b776fe668e0eacaae2ea53a834f80ed8ebe076655a4de060c98f2175a4d`
+        );
+        const data = await resp.json();
+        this.tickers.find((t) => t.name === currentTicker.name).price =
+          data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+        if (this.sel?.name === currentTicker.name) {
+          this.graph.push(data.USD);
+        }
+      }, 3000);
       this.ticker = '';
     },
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
+    },
+    normalizeGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+      return this.graph.map(
+        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+      );
     },
   },
 };
